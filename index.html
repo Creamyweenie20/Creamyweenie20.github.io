@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kit Feeney</title>
+<meta name="description" content="Kit Feeney. Superconducting circuits, light, classical hardware, quantitative finance, and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#13306B; --bg2:#08122B;
+  --ink:#EEF4FF; --muted:#A9BCE0; --line:#8FD3FF; --ring:#FFB4C8;
+  --serif:"Source Serif 4",Georgia,serif; --sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:radial-gradient(120% 90% at 70% 20%,var(--bg1),var(--bg2));
+  color:var(--ink);font:400 1.0625rem/1.6 var(--sans);overflow:hidden;
+}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+main{
+  position:relative;z-index:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:clamp(1.5rem,5vw,4rem);pointer-events:none;
+  padding-bottom:calc(clamp(1.5rem,5vw,4rem) + env(safe-area-inset-bottom,0px));
+  padding-top:calc(clamp(1.5rem,5vw,4rem) + env(safe-area-inset-top,0px));
+}
+h1{font:600 clamp(3rem,10vw,7rem)/.95 var(--serif);letter-spacing:-.025em;margin:0 0 1.25rem}
+.about{font:400 clamp(1.15rem,2.2vw,1.5rem)/1.45 var(--serif);max-width:34rem;margin:0 0 1.5rem;color:var(--ink)}
+.interests{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.75rem;padding:0;list-style:none;max-width:36rem}
+.interests li{border:1px solid rgba(143,211,255,.45);background:rgba(8,18,43,.45);border-radius:99px;padding:.15rem .85rem;font-size:.95rem}
+.links{display:flex;gap:1.5rem;flex-wrap:wrap;font-weight:500;pointer-events:auto}
+.links a{color:var(--ink);text-decoration-color:var(--ring);text-underline-offset:4px;text-decoration-thickness:2px}
+.links a:hover{color:var(--ring)}
+a:focus-visible{outline:3px solid var(--ring);outline-offset:4px;border-radius:2px}
+.hint{position:absolute;top:calc(1.25rem + env(safe-area-inset-top,0px));right:clamp(1.5rem,5vw,4rem);font-size:.9rem;color:var(--muted);margin:0;text-align:right;max-width:16rem}
+@media (max-width:40rem){.hint{display:none}}
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+<main>
+  <p class="hint">Move your pointer. The superconductor pushes the magnetic field around itself (the Meissner effect).</p>
+  <h1>Kit Feeney</h1>
+  <p class="about">Master's student in electrical engineering at Boston University. I like the places where physics meets hardware, and a few places where it meets markets.</p>
+  <ul class="interests" aria-label="Interests">
+    <li>Superconducting circuits</li>
+    <li>Light</li>
+    <li>Classical hardware</li>
+    <li>Quantitative finance</li>
+    <li>And a lot of other stuff</li>
+  </ul>
+  <div class="links">
+    <a href="mailto:kitroy20@bu.edu">Email</a>
+    <a href="https://github.com/YOUR-GITHUB-USERNAME">GitHub</a>
+    <a href="https://www.linkedin.com/in/YOUR-LINKEDIN/">LinkedIn</a>
+  </div>
+</main>
+
+<script>
+(function(){
+  // Magnetic field lines around a perfectly diamagnetic (superconducting) cylinder in a uniform field.
+  // With the cylinder at (cx, cy) and radius R, the field lines are contours of
+  // psi = v (1 - R^2 / r^2), where (u, v) is the position relative to the center.
+  var cv = document.getElementById("field"), ctx = cv.getContext("2d");
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var W, H, dpr, R, gap = 22;
+  var pos = {x:0, y:0}, target = {x:0, y:0}, drawn = {x:-1, y:-1};
+  var path = null, offset = 0;
+
+  function size(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W*dpr; cv.height = H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    R = Math.max(55, Math.min(130, Math.min(W,H)*0.15));
+    gap = W < 640 ? 18 : 22;
+    if(!pos.x){ pos.x = target.x = W*0.68; pos.y = target.y = H*0.38; }
+    drawn.x = -1;
+  }
+
+  function B(u, v){
+    var r2 = u*u + v*v, k = R*R / r2, k2 = k / r2;
+    return [1 - k + 2*k2*v*v, -2*k2*u*v];
+  }
+
+  function trace(){
+    var p = new Path2D(), ds = 6, R2 = R*R;
+    var start = -R*1.5 - 40;
+    for(var y0 = -gap; y0 < H + gap; y0 += gap){
+      var x = start, y = y0 + (pos.y % gap), u, v, b, m, steps = 0;
+      var first = true;
+      while(x < W + 40 && steps < 900){
+        u = x - pos.x; v = y - pos.y;
+        if(u*u + v*v < R2){ var d = Math.sqrt(u*u+v*v) || 1; x = pos.x + u/d*R; y = pos.y + v/d*R; u = x-pos.x; v = y-pos.y; }
+        if(first){ p.moveTo(x,y); first = false; } else p.lineTo(x,y);
+        b = B(u,v); m = Math.hypot(b[0],b[1]);
+        if(m < 1e-5) break;
+        var mx = x + b[0]/m*ds/2, my = y + b[1]/m*ds/2;
+        var b2 = B(mx - pos.x, my - pos.y), m2 = Math.hypot(b2[0],b2[1]);
+        if(m2 < 1e-5) break;
+        x += b2[0]/m2*ds; y += b2[1]/m2*ds; steps++;
+      }
+    }
+    return p;
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(143,211,255,.22)"; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.stroke(path);
+    ctx.strokeStyle = "rgba(190,232,255,.85)"; ctx.lineWidth = 2;
+    ctx.setLineDash([1, 15]); ctx.lineDashOffset = -offset;
+    ctx.stroke(path);
+    ctx.setLineDash([]);
+    // superconductor
+    var g = ctx.createRadialGradient(pos.x - R*.3, pos.y - R*.3, R*.1, pos.x, pos.y, R*1.9);
+    g.addColorStop(0, "rgba(255,180,200,.30)"); g.addColorStop(.5, "rgba(255,180,200,.05)"); g.addColorStop(1, "rgba(255,180,200,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pos.x, pos.y, R*1.9, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = "rgba(8,18,43,.92)"; ctx.beginPath(); ctx.arc(pos.x, pos.y, R, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = "#FFB4C8"; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  function frame(){
+    var dx = target.x - pos.x, dy = target.y - pos.y;
+    if(reduce){ pos.x = target.x; pos.y = target.y; }
+    else { pos.x += dx*0.08; pos.y += dy*0.08; }
+    if(Math.abs(pos.x-drawn.x) > .25 || Math.abs(pos.y-drawn.y) > .25){
+      path = trace(); drawn.x = pos.x; drawn.y = pos.y; draw();
+    }
+    if(!reduce){ offset = (offset + 0.5) % 16; draw(); }
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener("pointermove", function(e){ target.x = e.clientX; target.y = e.clientY; });
+  addEventListener("pointerdown", function(e){ target.x = e.clientX; target.y = e.clientY; });
+  addEventListener("resize", size);
+  size(); path = trace(); draw(); frame();
+})();
+</script>
+</body>
+</html>
