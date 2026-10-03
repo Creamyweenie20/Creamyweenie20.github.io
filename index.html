@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kit Feeney</title>
 <meta name="description" content="Kit Feeney. Superconducting circuits, light, classical hardware, quantitative finance, and other cool stuff.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg1:#13306B; --bg2:#08122B;
   --ink:#EEF4FF; --muted:#A9BCE0; --line:#8FD3FF; --ring:#636B2F;
-  --serif:"Source Serif 4",Georgia,serif; --sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"Times New Roman",Times,serif; --sans:"Times New Roman",Times,serif;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -20,125 +17,380 @@ body{
   background:radial-gradient(120% 90% at 70% 20%,var(--bg1),var(--bg2));
   color:var(--ink);font:400 1.0625rem/1.6 var(--sans);overflow:hidden;
 }
+/* Black layer that fades in over the blue background on every tab except Home */
+#veil{position:fixed;inset:0;background:#000;opacity:0;transition:opacity 1s ease;pointer-events:none}
+body.dark #veil{opacity:1}
+@media (prefers-reduced-motion:reduce){#veil{transition:none}}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+/* The space around the edge of the page. Make these numbers smaller for even less padding. */
 main{
-  position:relative;z-index:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;
-  padding:clamp(1.5rem,5vw,4rem);pointer-events:none;
-  padding-bottom:calc(clamp(1.5rem,5vw,4rem) + env(safe-area-inset-bottom,0px));
-  padding-top:calc(clamp(1.5rem,5vw,4rem) + env(safe-area-inset-top,0px));
+  position:relative;z-index:1;height:100%;display:flex;flex-direction:column;justify-content:flex-start;
+  padding:clamp(.75rem,2vw,1.5rem);
+  padding-top:calc(clamp(.75rem,2vw,1.5rem) + env(safe-area-inset-top,0px));
+  padding-bottom:calc(clamp(.75rem,2vw,1.5rem) + env(safe-area-inset-bottom,0px));
+  pointer-events:none;
 }
-h1{font:600 clamp(3rem,10vw,7rem)/.95 var(--serif);letter-spacing:-.025em;margin:0 0 1.25rem}
+
+/* ---------- TOP BAR: heading on the left, menu on the right ---------- */
+.bar{
+  display:flex;
+  justify-content:space-between;   /* heading left, menu right */
+  align-items:flex-start;          /* both line up at the top */
+  flex-wrap:wrap;                  /* if the screen is too narrow, the menu drops below the heading instead of overlapping it */
+  gap:.25rem 2rem;
+  margin-bottom:1.5rem;
+}
+/* The heading. It changes text when you click a tab. */
+#title{font:600 clamp(3rem,10vw,7rem)/.95 var(--serif);letter-spacing:-.025em;margin:0}
+/* On every tab except Home, the heading is smaller so long titles fit. */
+#title.sub{font-size:clamp(2rem,5vw,3.5rem);line-height:1}
+
+.menu{
+  display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;
+  margin-left:auto;                /* keeps the menu pushed to the right */
+  padding-top:.25rem;
+  pointer-events:auto;             /* makes the buttons clickable */
+}
+.menu button{
+  background:none;border:none;padding:.25rem 0;cursor:pointer;
+  color:var(--muted);font:inherit;font-size:1.1rem;
+  text-decoration:underline;text-decoration-color:transparent;
+  text-underline-offset:6px;text-decoration-thickness:2px;
+}
+.menu button:hover{color:var(--ink)}
+.menu button[aria-current="page"]{color:var(--ink);text-decoration-color:var(--ring)}
+
 .about{font:400 clamp(1.15rem,2.2vw,1.5rem)/1.45 var(--serif);max-width:34rem;margin:0 0 1.5rem;color:var(--ink)}
-.interests{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.75rem;padding:0;list-style:none;max-width:36rem}
+.interests{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 1.75rem;padding:0;list-style:none;max-width:32rem}
 .interests li{border:1px solid rgba(143,211,255,.45);background:rgba(8,18,43,.45);border-radius:99px;padding:.15rem .85rem;font-size:.95rem}
 .links{display:flex;gap:1.5rem;flex-wrap:wrap;font-weight:500;pointer-events:auto}
-.links a{color:var(--ink);text-decoration-color:var(--ring);text-underline-offset:4px;text-decoration-thickness:2px}
-.links a:hover{color:var(--ring)}
-a:focus-visible{outline:3px solid var(--ring);outline-offset:4px;border-radius:2px}
-.hint{position:absolute;top:calc(1.25rem + env(safe-area-inset-top,0px));right:clamp(1.5rem,5vw,4rem);font-size:.9rem;color:var(--muted);margin:0;text-align:right;max-width:16rem}
-@media (max-width:40rem){.hint{display:none}}
+.links a,.panel a{color:var(--ink);text-decoration-color:var(--ring);text-underline-offset:4px;text-decoration-thickness:2px;pointer-events:auto}
+.links a:hover,.panel a:hover{color:var(--ring)}
+a:focus-visible,button:focus-visible{outline:3px solid var(--ring);outline-offset:4px;border-radius:2px}
+
+.panel[hidden]{display:none}
+.panel p{max-width:34rem;margin:0 0 1rem;font-size:1.2rem}
 </style>
 </head>
 <body>
+<div id="veil" aria-hidden="true"></div>
 <canvas id="field" aria-hidden="true"></canvas>
 <main>
-  <p class="hint">.</p>
-  <h1>Kit Feeney</h1>
-  <p class="about">In a superposition of knowing and not knowing</p>
-  <ul class="interests" aria-label="Interests">
-    <li>Superconducting circuits</li>
-    <li>Light</li>
-    <li>Classical hardware</li>
-    <li>Quantitative finance</li>
-    <li>And other stuff</li>
-  </ul>
-  <div class="links">
-    <a href="mailto:kitroy20@bu.edu">Email</a>
-    <a href="https://github.com/Creamyweenie20">GitHub</a>
-    <a href="https://www.linkedin.com/in/kit-feeney-17204a222/">LinkedIn</a>
-  </div>
+
+  <header class="bar">
+    <h1 id="title">Kit Feeney</h1>
+
+    <!-- data-tab must match a panel's id below. data-title is the heading shown in the top left. -->
+    <nav class="menu" aria-label="Main menu">
+      <button type="button" data-tab="home" data-title="Kit Feeney" aria-current="page">Home</button>
+      <button type="button" data-tab="about" data-title="About Me">About Me</button>
+      <button type="button" data-tab="learning" data-title="Learning Philosophy">Learning Philosophy</button>
+      <button type="button" data-tab="contact" data-title="Contact">Contact</button>
+    </nav>
+  </header>
+
+  <section class="panel" id="home">
+    <p class="about">In a superposition of knowing and not knowing</p>
+    <ul class="interests" aria-label="Interests">
+      <li>Superconducting circuits</li>
+      <li>Light</li>
+      <li>Classical hardware</li>
+      <li>Quantitative finance</li>
+      <li>And other stuff</li>
+    </ul>
+    <div class="links">
+      <a href="https://github.com/Creamyweenie20">GitHub</a>
+      <a href="https://www.linkedin.com/in/kit-feeney-17204a222/">LinkedIn</a>
+      <a>CV available upon request</a>
+    </div>
+  </section>
+
+  <section class="panel" id="about" hidden>
+    <p>Write a few sentences about yourself here.</p>
+  </section>
+
+  <section class="panel" id="learning" hidden>
+    <p>Write about how you learn here.</p>
+  </section>
+
+  <section class="panel" id="contact" hidden>
+    <p><a href="mailto:kitroy20@bu.edu">kitroy20@bu.edu</a></p>
+  </section>
+
 </main>
 
 <script>
+// Tab switching: clicking a menu button shows the matching panel, hides the rest, and updates the heading.
 (function(){
-  // Magnetic field lines around a perfectly diamagnetic (superconducting) cylinder in a uniform field.
-  // With the cylinder at (cx, cy) and radius R, the field lines are contours of
-  // psi = v (1 - R^2 / r^2), where (u, v) is the position relative to the center.
+  var buttons = document.querySelectorAll(".menu button");
+  var panels = document.querySelectorAll(".panel");
+  var title = document.getElementById("title");
+  buttons.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var name = btn.dataset.tab;
+      panels.forEach(function(p){ p.hidden = (p.id !== name); });
+      buttons.forEach(function(b){
+        if(b === btn){ b.setAttribute("aria-current","page"); }
+        else { b.removeAttribute("aria-current"); }
+      });
+      title.textContent = btn.dataset.title;
+      title.classList.toggle("sub", name !== "home");
+      if(window.setBackground) window.setBackground(name);
+      document.body.classList.toggle("dark", name !== "home");
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  // One canvas, four background effects. Each tab has its own effect and they cross-fade.
   var cv = document.getElementById("field"), ctx = cv.getContext("2d");
   var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var W, H, dpr, R, gap = 22;
-  var pos = {x:0, y:0}, target = {x:0, y:0}, drawn = {x:-1, y:-1};
-  var path = null, offset = 0;
+  var W, H, dpr, T = 0;
+  var mouse = {x:-1, y:-1}, sm = {x:0, y:0};   // raw pointer, and a smoothed copy
+
+  function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  function gauss(r){ return Math.sqrt(-2*Math.log(r()||1e-9))*Math.cos(6.2832*r()); }
+
+  /* ===== HOME: superconductor expelling a magnetic field (Meissner effect) ===== */
+  var home = {
+    R:55, gap:22, pos:{x:0,y:0}, drawn:{x:-1,y:-1}, path:null, offset:0, ready:false,
+    resize:function(){
+      this.R = Math.max(55, Math.min(130, Math.min(W,H)*0.15));
+      this.gap = W < 640 ? 18 : 22;
+      if(!this.ready){ this.pos.x = W*0.68; this.pos.y = H*0.38; this.ready = true; }
+      this.path = null;
+    },
+    B:function(u,v){ var R=this.R, r2=u*u+v*v, k=R*R/r2, k2=k/r2; return [1-k+2*k2*v*v, -2*k2*u*v]; },
+    trace:function(){
+      var p = new Path2D(), ds = 6, R = this.R, R2 = R*R, px = this.pos.x, py = this.pos.y, gap = this.gap;
+      var start = -R*1.5 - 40;
+      for(var y0 = -gap; y0 < H + gap; y0 += gap){
+        var x = start, y = y0 + (py % gap), u, v, b, m, steps = 0, first = true;
+        while(x < W + 40 && steps < 900){
+          u = x - px; v = y - py;
+          if(u*u + v*v < R2){ var d = Math.sqrt(u*u+v*v) || 1; x = px + u/d*R; y = py + v/d*R; u = x-px; v = y-py; }
+          if(first){ p.moveTo(x,y); first = false; } else p.lineTo(x,y);
+          b = this.B(u,v); m = Math.hypot(b[0],b[1]);
+          if(m < 1e-5) break;
+          var mx = x + b[0]/m*ds/2, my = y + b[1]/m*ds/2;
+          var b2 = this.B(mx - px, my - py), m2 = Math.hypot(b2[0],b2[1]);
+          if(m2 < 1e-5) break;
+          x += b2[0]/m2*ds; y += b2[1]/m2*ds; steps++;
+        }
+      }
+      return p;
+    },
+    update:function(){
+      var p = this.pos;
+      if(reduce){ p.x = mouse.x; p.y = mouse.y; }
+      else { p.x += (mouse.x-p.x)*0.08; p.y += (mouse.y-p.y)*0.08; }
+      if(!this.path || Math.abs(p.x-this.drawn.x) > .25 || Math.abs(p.y-this.drawn.y) > .25){
+        this.path = this.trace(); this.drawn.x = p.x; this.drawn.y = p.y;
+      }
+      if(!reduce) this.offset = (this.offset + 0.5) % 16;
+    },
+    draw:function(){
+      var p = this.pos, R = this.R;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(143,211,255,.22)"; ctx.lineWidth = 1; ctx.setLineDash([]);
+      ctx.stroke(this.path);
+      ctx.strokeStyle = "rgba(190,232,255,.85)"; ctx.lineWidth = 2;
+      ctx.setLineDash([1, 15]); ctx.lineDashOffset = -this.offset;
+      ctx.stroke(this.path);
+      ctx.setLineDash([]);
+      var g = ctx.createRadialGradient(p.x - R*.3, p.y - R*.3, R*.1, p.x, p.y, R*1.9);
+      g.addColorStop(0, "rgba(255,180,200,.30)"); g.addColorStop(.5, "rgba(255,180,200,.05)"); g.addColorStop(1, "rgba(255,180,200,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, R*1.9, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = "rgba(8,18,43,.92)"; ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = "#373B1A"; ctx.lineWidth = 2; ctx.stroke();
+    }
+  };
+
+  /* ===== ABOUT: light. Real two-source interference: dark lines are where the two waves cancel ===== */
+  var light = {
+    off:null, octx:null, img:null, cell:4, gw:0, gh:0, r1:null, sx:0, sy:0, t0:-1000,
+    enter:function(){ this.t0 = T; },   // every time you open the tab, the waves restart from the sources
+    resize:function(){
+      var cell = this.cell = Math.max(4, Math.round(W/300));
+      this.gw = Math.ceil(W/cell); this.gh = Math.ceil(H/cell);
+      this.off = document.createElement("canvas"); this.off.width = this.gw; this.off.height = this.gh;
+      this.octx = this.off.getContext("2d"); this.img = this.octx.createImageData(this.gw, this.gh);
+      this.sx = W*0.28; this.sy = H*0.62;
+      this.r1 = new Float32Array(this.gw*this.gh);
+      for(var y=0, i=0; y<this.gh; y++){
+        var dy = (y+0.5)*cell - this.sy;
+        for(var x=0; x<this.gw; x++, i++){
+          var dx = (x+0.5)*cell - this.sx;
+          this.r1[i] = Math.sqrt(dx*dx + dy*dy);
+        }
+      }
+    },
+    draw:function(){
+      var cell = this.cell, gw = this.gw, gh = this.gh, d = this.img.data;
+      var k = 6.2832/46, c = 50;                       // c = how fast the waves travel, in pixels per second
+      var front = reduce ? 1e9 : c*Math.max(0, T - this.t0);   // how far the waves have spread so far
+      var ph = reduce ? 0 : k*front, bx = sm.x, by = sm.y, i = 0, p = 0;
+      for(var y=0; y<gh; y++){
+        var dy = (y+0.5)*cell - by, dy2 = dy*dy;
+        for(var x=0; x<gw; x++, i++, p+=4){
+          var dx = (x+0.5)*cell - bx, r2 = Math.sqrt(dx*dx + dy2), r1 = this.r1[i];
+          // two waves added together: they reinforce (bright) or cancel (dark)
+          var e1 = (front - r1)/46, e2 = (front - r2)/46;   // soft leading edge, zero beyond the front
+          var a = (e1 > 0 ? Math.min(1, e1)*Math.cos(k*r1 - ph)/(1 + r1/500) : 0)
+                + (e2 > 0 ? Math.min(1, e2)*Math.cos(k*r2 - ph)/(1 + r2/500) : 0);
+          var v = a*0.3 + 0.5; if(v < 0) v = 0; if(v > 1) v = 1; v = v*v;
+          d[p] = 255; d[p+1] = 232; d[p+2] = 184; d[p+3] = v*200;
+        }
+      }
+      this.octx.putImageData(this.img, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.off, 0, 0, gw*cell, gh*cell);
+      var srcs = [{x:this.sx, y:this.sy}, {x:bx, y:by}];
+      for(var j=0;j<2;j++){
+        var s = srcs[j], g = ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,34);
+        g.addColorStop(0,"rgba(255,248,226,1)"); g.addColorStop(1,"rgba(255,248,226,0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x,s.y,34,0,6.2832); ctx.fill();
+      }
+    }
+  };
+
+  /* ===== LEARNING: classical hardware. Copper PCB traces with signal pulses running along them ===== */
+  var hw = {
+    traces:[], lines:null, pads:[],
+    resize:function(){
+      var rnd = mulberry32(7), cell = W < 640 ? 32 : 44, cols = Math.ceil(W/cell)+1, rows = Math.ceil(H/cell)+1;
+      var dirs = [[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+      var n = Math.round(W*H/(cell*cell)/14);
+      this.traces = []; this.pads = []; this.lines = new Path2D();
+      for(var i=0;i<n;i++){
+        var gx = Math.floor(rnd()*cols), gy = Math.floor(rnd()*rows), d = Math.floor(rnd()*8);
+        var pts = [[gx*cell, gy*cell]], cum = [0], segs = 4 + Math.floor(rnd()*7);
+        for(var s=0;s<segs;s++){
+          var len = 1 + Math.floor(rnd()*4);
+          gx += dirs[d][0]*len; gy += dirs[d][1]*len;
+          var q = [gx*cell, gy*cell], prev = pts[pts.length-1];
+          pts.push(q); cum.push(cum[cum.length-1] + Math.hypot(q[0]-prev[0], q[1]-prev[1]));
+          d = (d + (rnd() < .5 ? 1 : 7)) % 8;
+        }
+        this.lines.moveTo(pts[0][0], pts[0][1]);
+        for(var k=1;k<pts.length;k++) this.lines.lineTo(pts[k][0], pts[k][1]);
+        this.pads.push(pts[0], pts[pts.length-1]);
+        this.traces.push({pts:pts, cum:cum, speed:0.6+rnd()*0.9, phase:rnd()});
+      }
+    },
+    at:function(tr, d){
+      var i = 1; while(i < tr.cum.length-1 && tr.cum[i] < d) i++;
+      var a = tr.pts[i-1], b = tr.pts[i], seg = (tr.cum[i]-tr.cum[i-1]) || 1, f = (d-tr.cum[i-1])/seg;
+      return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f];
+    },
+    draw:function(){
+      ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(217,160,102,.30)"; ctx.lineWidth = 3; ctx.stroke(this.lines);
+      var i, p;
+      for(i=0;i<this.pads.length;i++){
+        p = this.pads[i];
+        ctx.fillStyle = "rgba(217,160,102,.50)"; ctx.beginPath(); ctx.arc(p[0],p[1],5.5,0,6.2832); ctx.fill();
+        ctx.fillStyle = "rgba(8,18,43,.95)"; ctx.beginPath(); ctx.arc(p[0],p[1],2.2,0,6.2832); ctx.fill();
+      }
+      for(i=0;i<this.traces.length;i++){
+        var tr = this.traces[i], total = tr.cum[tr.cum.length-1], cycle = total + 160;
+        var d = (T*70*tr.speed + tr.phase*cycle) % cycle;
+        if(d < total){
+          p = this.at(tr, d);
+          ctx.fillStyle = "rgba(255,226,170,.16)"; ctx.beginPath(); ctx.arc(p[0],p[1],8,0,6.2832); ctx.fill();
+          ctx.fillStyle = "rgba(255,230,180,.95)"; ctx.beginPath(); ctx.arc(p[0],p[1],2.6,0,6.2832); ctx.fill();
+        }
+      }
+    }
+  };
+
+  /* ===== CONTACT: quantitative finance. Monte Carlo price paths drawing in, with a crosshair ===== */
+  var fin = {
+    faint:null, hi:null, hiY:[], step:6, t0:-100,
+    enter:function(){ this.t0 = T; },
+    resize:function(){
+      var rnd = mulberry32(21), step = this.step, n = Math.ceil(W/step)+1, y0 = H*0.6;
+      this.faint = new Path2D(); this.hi = new Path2D(); this.hiY = [];
+      for(var k=0;k<36;k++){
+        var s = 0, path = (k === 0) ? this.hi : this.faint;
+        path.moveTo(0, y0);
+        for(var i=1;i<n;i++){
+          s += 0.0005 + 0.011*gauss(rnd);
+          var y = y0 - s*H*1.5;
+          path.lineTo(i*step, y);
+          if(k === 0) this.hiY[i] = y;
+        }
+        if(k === 0) this.hiY[0] = y0;
+      }
+    },
+    draw:function(){
+      var front = reduce ? W+10 : Math.min(W+10, (T - this.t0)*150), i;
+      ctx.setLineDash([]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(143,211,255,.08)";
+      for(i=1;i<8;i++){ ctx.beginPath(); ctx.moveTo(0,H*i/8); ctx.lineTo(W,H*i/8); ctx.stroke(); }
+      for(i=1;i<12;i++){ ctx.beginPath(); ctx.moveTo(W*i/12,0); ctx.lineTo(W*i/12,H); ctx.stroke(); }
+      ctx.save(); ctx.beginPath(); ctx.rect(0,0,Math.max(0,front),H); ctx.clip();
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(143,211,255,.20)"; ctx.lineWidth = 1; ctx.stroke(this.faint);
+      ctx.strokeStyle = "rgba(255,180,200,.95)"; ctx.lineWidth = 2; ctx.stroke(this.hi);
+      ctx.restore();
+      if(front < W){
+        var idx = Math.max(0, Math.min(this.hiY.length-1, Math.floor(front/this.step)));
+        ctx.fillStyle = "rgba(255,180,200,1)"; ctx.beginPath(); ctx.arc(front, this.hiY[idx], 4, 0, 6.2832); ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(255,180,200,.28)"; ctx.setLineDash([4,6]);
+      ctx.beginPath(); ctx.moveTo(sm.x,0); ctx.lineTo(sm.x,H); ctx.moveTo(0,sm.y); ctx.lineTo(W,sm.y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  };
+
+  /* ===== Switching between effects ===== */
+  var names = ["home","about","learning","contact"];
+  var fx = {home:home, about:light, learning:hw, contact:fin};
+  var w = {home:1, about:0, learning:0, contact:0}, current = "home";
+
+  window.setBackground = function(name){
+    if(!fx[name] || name === current) return;
+    current = name;
+    if(fx[name].enter) fx[name].enter();
+    if(reduce) names.forEach(function(n){ w[n] = (n === name) ? 1 : 0; });
+  };
 
   function size(){
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = innerWidth; H = innerHeight;
     cv.width = W*dpr; cv.height = H*dpr;
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    R = Math.max(55, Math.min(130, Math.min(W,H)*0.15));
-    gap = W < 640 ? 18 : 22;
-    if(!pos.x){ pos.x = target.x = W*0.68; pos.y = target.y = H*0.38; }
-    drawn.x = -1;
+    if(mouse.x < 0){ mouse.x = sm.x = W*0.68; mouse.y = sm.y = H*0.38; }
+    names.forEach(function(n){ if(fx[n].resize) fx[n].resize(); });
   }
 
-  function B(u, v){
-    var r2 = u*u + v*v, k = R*R / r2, k2 = k / r2;
-    return [1 - k + 2*k2*v*v, -2*k2*u*v];
-  }
-
-  function trace(){
-    var p = new Path2D(), ds = 6, R2 = R*R;
-    var start = -R*1.5 - 40;
-    for(var y0 = -gap; y0 < H + gap; y0 += gap){
-      var x = start, y = y0 + (pos.y % gap), u, v, b, m, steps = 0;
-      var first = true;
-      while(x < W + 40 && steps < 900){
-        u = x - pos.x; v = y - pos.y;
-        if(u*u + v*v < R2){ var d = Math.sqrt(u*u+v*v) || 1; x = pos.x + u/d*R; y = pos.y + v/d*R; u = x-pos.x; v = y-pos.y; }
-        if(first){ p.moveTo(x,y); first = false; } else p.lineTo(x,y);
-        b = B(u,v); m = Math.hypot(b[0],b[1]);
-        if(m < 1e-5) break;
-        var mx = x + b[0]/m*ds/2, my = y + b[1]/m*ds/2;
-        var b2 = B(mx - pos.x, my - pos.y), m2 = Math.hypot(b2[0],b2[1]);
-        if(m2 < 1e-5) break;
-        x += b2[0]/m2*ds; y += b2[1]/m2*ds; steps++;
-      }
-    }
-    return p;
-  }
-
-  function draw(){
+  var last = 0;
+  function frame(ts){
+    var dt = Math.min(0.05, (ts - last)/1000 || 0); last = ts;
+    if(!reduce) T += dt;
+    var e = reduce ? 1 : 0.12;
+    sm.x += (mouse.x - sm.x)*e; sm.y += (mouse.y - sm.y)*e;
+    var fade = reduce ? 1 : Math.min(1, dt*3.2);
     ctx.clearRect(0,0,W,H);
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "rgba(143,211,255,.22)"; ctx.lineWidth = 1; ctx.setLineDash([]);
-    ctx.stroke(path);
-    ctx.strokeStyle = "rgba(190,232,255,.85)"; ctx.lineWidth = 2;
-    ctx.setLineDash([1, 15]); ctx.lineDashOffset = -offset;
-    ctx.stroke(path);
-    ctx.setLineDash([]);
-    // superconductor
-    var g = ctx.createRadialGradient(pos.x - R*.3, pos.y - R*.3, R*.1, pos.x, pos.y, R*1.9);
-    g.addColorStop(0, "rgba(255,180,200,.30)"); g.addColorStop(.5, "rgba(255,180,200,.05)"); g.addColorStop(1, "rgba(255,180,200,0)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pos.x, pos.y, R*1.9, 0, 6.2832); ctx.fill();
-    ctx.fillStyle = "rgba(8,18,43,.92)"; ctx.beginPath(); ctx.arc(pos.x, pos.y, R, 0, 6.2832); ctx.fill();
-    ctx.strokeStyle = "#373B1A"; ctx.lineWidth = 2; ctx.stroke();
-  }
-
-  function frame(){
-    var dx = target.x - pos.x, dy = target.y - pos.y;
-    if(reduce){ pos.x = target.x; pos.y = target.y; }
-    else { pos.x += dx*0.08; pos.y += dy*0.08; }
-    if(Math.abs(pos.x-drawn.x) > .25 || Math.abs(pos.y-drawn.y) > .25){
-      path = trace(); drawn.x = pos.x; drawn.y = pos.y; draw();
-    }
-    if(!reduce){ offset = (offset + 0.5) % 16; draw(); }
+    names.forEach(function(n){
+      var tgt = (n === current) ? 1 : 0;
+      w[n] += (tgt - w[n])*fade;
+      if(Math.abs(tgt - w[n]) < 0.01) w[n] = tgt;
+      if(w[n] > 0){
+        if(fx[n].update) fx[n].update();
+        ctx.save(); ctx.globalAlpha = w[n]; fx[n].draw(); ctx.restore();
+      }
+    });
     requestAnimationFrame(frame);
   }
 
-  addEventListener("pointermove", function(e){ target.x = e.clientX; target.y = e.clientY; });
-  addEventListener("pointerdown", function(e){ target.x = e.clientX; target.y = e.clientY; });
+  addEventListener("pointermove", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; });
+  addEventListener("pointerdown", function(e){ mouse.x = e.clientX; mouse.y = e.clientY; });
   addEventListener("resize", size);
-  size(); path = trace(); draw(); frame();
+  size(); requestAnimationFrame(frame);
 })();
 </script>
 </body>
