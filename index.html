@@ -312,7 +312,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--ring);outline-offse
     faint:null, hi:null, hiY:[], step:6, t0:-100,
     enter:function(){ this.t0 = T; },
     resize:function(){
-      var rnd = mulberry32(21), step = this.step, n = Math.ceil(W/step)+1, y0 = H*0.6;
+      var rnd = mulberry32(), step = this.step, n = Math.ceil(W/step)+1, y0 = H*0.6;
       this.faint = new Path2D(); this.hi = new Path2D(); this.hiY = [];
       for(var k=0;k<36;k++){
         var s = 0, path = (k === 0) ? this.hi : this.faint;
