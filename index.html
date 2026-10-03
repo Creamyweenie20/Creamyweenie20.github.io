@@ -107,7 +107,8 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--ring);outline-offse
   </section>
 
   <section class="panel" id="about" hidden>
-    <p>To be added.</p>
+    <p>Hello there! My interests are all over the place. They typically revolve around hardware, wether it be classical, photonic, or quantum. It's all so cool to me at least. I also have a faint interest in philosophy and its applications in math and logic. But I'm not too well versed in that. Even less versed in economics and finance.</p>
+    <p>I attended the University of California, Irvine earning degrees in engineering physics, pure mathematics, and economics. I currently attend Boston University, originally for a PhD in electrical engineering, but decided to master out. I am a big advocate for equity and for accessible education.</p>
   </section>
 
   <section class="panel" id="learning" hidden>
@@ -310,9 +311,12 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--ring);outline-offse
   /* ===== CONTACT: quantitative finance. Monte Carlo price paths drawing in, with a crosshair ===== */
   var fin = {
     faint:null, hi:null, hiY:[], step:6, t0:-100,
-    enter:function(){ this.t0 = T; },
+    enter:function(){
+  this.t0 = T;
+  this.resize();
+},
     resize:function(){
-      var rnd = mulberry32(), step = this.step, n = Math.ceil(W/step)+1, y0 = H*0.6;
+      var rnd = mulberry32(Date.now()), step = this.step, n = Math.ceil(W/step)+1, y0 = H*0.6;
       this.faint = new Path2D(); this.hi = new Path2D(); this.hiY = [];
       for(var k=0;k<36;k++){
         var s = 0, path = (k === 0) ? this.hi : this.faint;
